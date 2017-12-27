@@ -15,3 +15,7 @@
 [使用Metasploit](使用metasploit.md)
 [使用Git](使用git.md)
 [报告一个Bug](报告一个bug.md)
+
+## 贡献
+[贡献于metasploit](贡献给metasploit.md)
+[创建一个loginscans Metasploit模块](创建一个loginscansMetasploit模块.md)

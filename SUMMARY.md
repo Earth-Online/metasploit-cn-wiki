@@ -4,7 +4,6 @@
         * [使用metasploit](使用metasploit.md)
         * [使用git](使用git.md)
         * [报告一个bug](报告一个bug.md)
-    * [模块和增强功能的接受指南](模块和增强功能的接受指南.md)
     * [贡献代码](贡献代码.md)
         * [贡献给metasploit](贡献给metasploit.md)
-    * [开始一个pull请求](开始一个pull请求.md)
+        * [创建一个loginscans Metasploit模块](创建一个loginscansMetasploit模块.md)
