@@ -7,3 +7,5 @@
     * [贡献代码](贡献代码.md)
         * [贡献给metasploit](贡献给metasploit.md)
         * [创建一个loginscans Metasploit模块](创建一个loginscansMetasploit模块.md)
+        * [接受模块和增强功能的指导](接受模块和增强功能的指导.md)
+        * [常见的Metasploit模块代码错误](常见的Metasploit模块代码错误.md)
