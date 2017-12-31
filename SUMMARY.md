@@ -9,3 +9,7 @@
         * [创建一个loginscans Metasploit模块](创建一个loginscansMetasploit模块.md)
         * [接受模块和增强功能的指导](接受模块和增强功能的指导.md)
         * [常见的Metasploit模块代码错误](常见的Metasploit模块代码错误.md)
+        * [样式提示](样式提示.md)
+        * [metasploit提交者](metasploit提交者.md)
+    * [metasploit开发](metasploit开发.md)
+        * [为什么是ruby](为什么是ruby.md)
