@@ -13,3 +13,7 @@
         * [metasploit提交者](metasploit提交者.md)
     * [metasploit开发](metasploit开发.md)
         * [为什么是ruby](为什么是ruby.md)
+        * [样式提示](样式提示2.md)
+        * [如何开始写一个exploit](如何开始写一个exploit.md)
+        * [如何开始写一个辅助模块](如何开始写一个辅助模块.md)
+        * [如何开始写一个post模块](如何开始写一个post模块.md)
