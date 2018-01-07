@@ -23,3 +23,7 @@
         * [Metasploit模块引用标识符](Metasploit模块引用标识符.md)
         * [怎么在你的exploit中确认window补丁程序级别](怎么在你的exploit中确认window补丁程序級別.md)
         * [如何使用filedropper清理文件](如何使用filedrop清理文件.md)
+        * [如何弃用metasploit模块](如何弃用metasploit模块.md)
+        * [如何在模块开发中报告或储存数据](如何在模块开发中报告或储存数据.md)
+        * [在metasploit如何使用日志](在metasploit如何使用日志.md)
+        * [如何在metasploit对JavaScript进行混淆](如何在metasploit对JavaScript进行混淆.md)
