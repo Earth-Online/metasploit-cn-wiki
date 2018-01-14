@@ -27,3 +27,5 @@
         * [如何在模块开发中报告或储存数据](如何在模块开发中报告或储存数据.md)
         * [在metasploit如何使用日志](在metasploit如何使用日志.md)
         * [如何在metasploit对JavaScript进行混淆](如何在metasploit对JavaScript进行混淆.md)
+        * [如何解析一个http响应](如何解析一个http响应.md)
+        * [如何使用HTTPClient发送HTTP请求](如何使用HTTPClient发送HTTP请求.md)
