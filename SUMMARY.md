@@ -41,3 +41,9 @@
         * [如何编写一个check()方法](如何编写一个check()方法.markdown)
         * [如何使用Seh mixin来利用异常处理程序](如何使用Sehmixin来利用异常处理程序.md)
         * [如何在Windows上使用WbemExec进行写入权限攻击](如何在Windows上使用WbemExec进行写入权限攻击.md)
+        * [如何使用httpserver和httpclient编写一个模块](如何使用httpserver和httpclient编写一个模块.md)
+        * [如何使用Rex::Zip::Archive压缩文件.](如何使用Rex::Zip::Archive压缩文件.md)
+        * [payloads如何工作](payloads如何工作.md)
+        * [如何免杀](如何免杀.md)
+        * [如何正确使用metasploit模块](如何正确使用metasploit模块.md)
+        
